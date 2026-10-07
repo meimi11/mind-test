@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>隐藏人格测试</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: #f6f7f9; color: #1f2328; padding: 24px 16px;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .app { width: 100%; max-width: 480px; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 28px 24px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  .sub { color: #57606a; font-size: 14px; line-height: 1.7; margin: 0; }
+  .fade { animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .bar-bg { height: 6px; background: #eaeef2; border-radius: 999px; overflow: hidden; margin-bottom: 6px; }
+  .bar { height: 100%; width: 0; background: #4a5bd6; border-radius: 999px; transition: width .3s ease; }
+  .step { font-size: 12px; color: #8c959f; margin-bottom: 18px; }
+
+  .q { font-size: 19px; font-weight: 700; line-height: 1.6; margin: 0 0 20px; }
+  .opt {
+    display: block; width: 100%; text-align: left; margin-bottom: 10px;
+    padding: 14px 16px; font-size: 15px; font-family: inherit; color: #1f2328;
+    background: #f6f7f9; border: 2px solid transparent; border-radius: 12px;
+    cursor: pointer; transition: all .15s ease;
+  }
+  .opt:hover { background: #eef1f5; border-color: #c9d1da; }
+  .opt.picked { background: #eef0fd; border-color: #4a5bd6; }
+
+  .btn {
+    display: block; width: 100%; padding: 14px; margin-top: 8px;
+    font-size: 16px; font-weight: 700; font-family: inherit; color: #fff;
+    background: #4a5bd6; border: none; border-radius: 12px; cursor: pointer;
+  }
+  .btn.ghost { background: #fff; color: #4a5bd6; border: 2px solid #d8dcf5; }
+
+  .badge {
+    width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; font-weight: 800; color: #fff;
+  }
+  .rname { font-size: 24px; font-weight: 800; text-align: center; margin: 0 0 6px; }
+  .rtag { text-align: center; font-size: 13px; color: #8c959f; margin: 0 0 20px; }
+  .desc { font-size: 15px; line-height: 1.9; color: #3d444d; margin: 0 0 22px; }
+  .score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .score-name { width: 72px; color: #57606a; flex: none; }
+  .score-bg { flex: 1; height: 8px; background: #eaeef2; border-radius: 999px; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 999px; transition: width .6s ease; }
+  .score-val { width: 22px; text-align: right; color: #8c959f; flex: none; }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+<div class="app"><div class="card" id="stage"></div></div>
+
+<script>
+  const TYPES = {
+    owl:  { key:'owl',  short:'枭', name:'深夜哲学家', tag:'想得多 · 看得远', color:'#4a5bd6',
+            desc:'你脑子里常年开着一场讨论会。别人觉得你想太多，但你知道很多决定就是靠那几分钟的安静想清楚的。热闹你也能应付，只是结束后一定要回到自己的世界里充电。' },
+    dog:  { key:'dog',  short:'犬', name:'人间小太阳', tag:'热乎 · 靠谱 · 人缘好', color:'#ef8a3c',
+            desc:'你是那种群里一冒泡气氛就活了的人。别人的情绪你接得住，也愿意接，但偶尔会忘记自己也累。记得把"照顾别人"的力气分一点给自己。' },
+    cat:  { key:'cat',  short:'猫', name:'独处充电宝', tag:'慢热 · 自有节奏', color:'#7a6ba8',
+            desc:'你不爱凑热闹，也不觉得孤独是件需要被拯救的事。你的能量来自自己的节奏——一本书、一部剧、一段没人打扰的时间。真正靠近你的人，才知道你有多好相处。' },
+    fox:  { key:'fox',  short:'狐', name:'野生冒险家', tag:'行动快 · 好奇心重', color:'#e5484d',
+            desc:'你做决定靠直觉，而且通常不差。稳定对你来说有点像温水，待久了就想动一动。你对新鲜事的反应不是"要不要"，而是"什么时候"。' }
+  };
+  const ORDER = ['owl','dog','cat','fox'];
+
+  const QUESTIONS = [
+    { q:'周五晚上突然空出来，你的第一反应是？', o:[
+      ['约人出去吃点好的','dog'], ['在家待着，终于能安静一会','owl'],
+      ['瘫着刷剧打游戏','cat'], ['查一下周末能去哪儿','fox'] ] },
+    { q:'朋友聚会里，你通常是？', o:[
+      ['串场的那个，照顾到每个人','dog'], ['听得多说得少，偶尔冒一句金句','owl'],
+      ['找个角落跟一两个人聊','cat'], ['提议换个地方继续玩的人','fox'] ] },
+    { q:'遇到烦心事，你会？', o:[
+      ['找人说出来，说完就好多了','dog'], ['一个人反复琢磨来龙去脉','owl'],
+      ['先放着，睡一觉再说','cat'], ['立刻做点别的转移注意力','fox'] ] },
+    { q:'别人对你的第一印象往往是？', o:[
+      ['热情、好说话','dog'], ['有点高冷、不太好猜','owl'],
+      ['安静、慢热','cat'], ['风风火火、闲不住','fox'] ] },
+    { q:'你手机相册里最多的是？', o:[
+      ['合照','dog'], ['截图和备忘录','owl'],
+      ['风景和随手拍的东西','cat'], ['路上拍的奇怪瞬间','fox'] ] },
+    { q:'做重要决定时，你更信？', o:[
+      ['身边人的意见','dog'], ['自己分析出来的结论','owl'],
+      ['等到心里那个感觉对了','cat'], ['先试一步看看再说','fox'] ] },
+    { q:'深夜十二点，你一般在干什么？', o:[
+      ['还在回消息','dog'], ['想事情，越想越清醒','owl'],
+      ['刷到停不下来','cat'], ['在看明天要去哪儿','fox'] ] },
+    { q:'如果给自己放一个月假，你会？', o:[
+      ['排满行程，见想见的人','dog'], ['列个计划，学点新东西','owl'],
+      ['哪儿也不去，好好休息','cat'], ['买张票，去没去过的地方','fox'] ] }
+  ];
+
+  const stage = document.getElementById('stage');
+  let idx = 0;
+  const scores = { owl:0, dog:0, cat:0, fox:0 };
+
+  function html(str) { stage.innerHTML = str; stage.classList.remove('fade'); void stage.offsetWidth; stage.classList.add('fade'); }
+
+  function home() {
+    idx = 0;
+    for (const k in scores) scores[k] = 0;
+    html(`
+      <h1>隐藏人格测试</h1>
+      <p class="sub">8 道题，凭第一反应选。<br>看看你骨子里是枭、犬、猫，还是狐。</p>
+      <button class="btn" id="go" style="margin-top:24px">开始测试</button>
+    `);
+    document.getElementById('go').onclick = renderQuestion;
+  }
+
+  function renderQuestion() {
+    const item = QUESTIONS[idx];
+    const pct = (idx / QUESTIONS.length) * 100;
+    const opts = item.o.map((o, i) => `<button class="opt" data-k="${o[1]}">${o[0]}</button>`).join('');
+    html(`
+      <div class="bar-bg"><div class="bar" style="width:${pct}%"></div></div>
+      <div class="step">第 ${idx + 1} / ${QUESTIONS.length} 题</div>
+      <p class="q">${item.q}</p>
+      <div>${opts}</div>
+    `);
+    stage.querySelectorAll('.opt').forEach(btn => {
+      btn.onclick = () => {
+        stage.querySelectorAll('.opt').forEach(b => b.classList.remove('picked'));
+        btn.classList.add('picked');
+        scores[btn.dataset.k]++;
+        setTimeout(() => {
+          idx++;
+          if (idx < QUESTIONS.length) renderQuestion(); else renderResult();
+        }, 260);
+      };
+    });
+  }
+
+  function renderResult() {
+    let top = ORDER[0];
+    ORDER.forEach(k => { if (scores[k] > scores[top]) top = k; });
+    const t = TYPES[top];
+    const max = Math.max(...ORDER.map(k => scores[k]));
+    const rows = ORDER.map(k => {
+      const ty = TYPES[k];
+      const w = max ? (scores[k] / max) * 100 : 0;
+      return `<div class="score-row">
+        <span class="score-name">${ty.name.slice(2)}</span>
+        <span class="score-bg"><span class="score-bar" style="width:${w}%;background:${ty.color}"></span></span>
+        <span class="score-val">${scores[k]}</span>
+      </div>`;
+    }).join('');
+    html(`
+      <div class="badge" style="background:${t.color}">${t.short}</div>
+      <p class="rname" style="color:${t.color}">${t.name}</p>
+      <p class="rtag">${t.tag}</p>
+      <p class="desc">${t.desc}</p>
+      ${rows}
+      <button class="btn" id="again" style="margin-top:20px">再测一次</button>
+    `);
+    document.getElementById('again').onclick = home;
+  }
+
+  home();
+</script>
+</body>
+</html>
